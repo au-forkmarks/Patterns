@@ -2,6 +2,18 @@
 
 ## 1.2.0 - Unreleased
 
+- Depends pattern: add support for a `~=` operator to test for substrings.
+
+- Include pattern name in the parser log output. This makes it much easier to
+  debug problems.
+
+- Markdown pattern: make sure we correctly identify autoloaded markdown content
+  referenced from a just-injected HTML fragment.
+  [Ticket 188](https://github.com/Patternslib/Patterns/issues/188)
+
+- Remove Modernizr dependency from placeholder pattern.
+
+
 ## 1.1.0 - Released February 7, 2013
 
 - bumper pattern fetches DOM info in event handler, not only during init.
