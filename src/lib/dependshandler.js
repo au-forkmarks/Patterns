@@ -4,8 +4,14 @@ define([
 ], function($, parser) {
     function DependsHandler($el, expression) {
         var $context = $el.closest("form");
-        if (!$context.length)
-            $context=$(document);
+        if (!$context.length) {
+            // Use topmost element instead of document directly in case we are
+            // inside a shadow DOM fragment.
+            var root=$el[0];
+            while (root.parentNode!==null)
+                root=root.parentNode;
+            $context=$(root);
+        }
         this.$el=$el;
         this.$context=$context;
         this.ast=parser.parse(expression);  // TODO: handle parse exceptions here
@@ -13,10 +19,14 @@ define([
 
     DependsHandler.prototype = {
         _findInputs: function(name) {
-            var $input = this.$context.find(":input[name='"+name+"']");
-            if (!$input.length)
-                $input=$("#"+name);
-            return $input;
+            var inputs = this.$context[0].querySelectorAll(
+                        "input[name='"+name+"'],"+
+                        "select[name='"+name+"'],"+
+                        "textarea[name='"+name+"']");
+            if (inputs.length)
+                return $(inputs);
+            else
+                return $("#"+name);
         },
 
         _getValue: function(name) {
