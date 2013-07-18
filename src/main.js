@@ -2,9 +2,6 @@ define([
     "jquery",
     "./registry",
 
-    "modernizr",
-    "less",
-    "prefixfree",
     "./pat/autofocus",
     "./pat/autoscale",
     "./pat/autosubmit",
@@ -17,7 +14,6 @@ define([
     "./pat/chosen",
     "./pat/collapsible",
     "./pat/depends",
-    "./pat/edit-tinymce",
     "./pat/expandable",
     "./pat/equaliser",
     "./pat/focus",
