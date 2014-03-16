@@ -9,6 +9,7 @@ define([
 
     parser.add_argument("class");
     parser.add_argument("top", "center");
+    parser.add_argument("closing", ["close-button"], ["close-button", "outside"], true);
 
     var modal = {
         name: "modal",
@@ -52,7 +53,8 @@ define([
             var $header = $("<div class='header' />"),
                 activeElement = document.activeElement;
 
-            $("<button type='button' class='close-panel'>Close</button>").appendTo($header);
+            if (cfg.closing.indexOf("close-button")!==-1)
+                $("<button type='button' class='close-panel'>Close</button>").appendTo($header);
 
             // We cannot handle text nodes here
             $el.children(":last, :not(:first)")
@@ -70,8 +72,9 @@ define([
         _init_handlers: function($el, cfg) {
             // event handlers remove modal - first arg to bind is ``this``
             $(document).on("click.pat-modal", ".close-panel", modal.destroy.bind($el, $el));
-            // remove on ESC
-            $(document).on("keyup.pat-modal", modal.destroy.bind($el, $el));
+            $(document).on("keyup.pat-modal", modal._onKeyUp.bind($el, $el));
+            if (cfg.closing.indexOf("outside")!==-1)
+                $(document).on("click.pat-modal", modal._onPossibleOutsideClick.bind($el, $el));
 
             $(window).on("resize.pat-modal-position",
                 utils.debounce(modal.setPosition.bind(modal, $el, cfg), 400));
@@ -79,6 +82,16 @@ define([
                 utils.debounce(modal.setPosition.bind(modal, $el), 400));
             $(document).on("patterns-injected.pat-modal-position", "#pat-modal,div.pat-modal",
                 utils.debounce(modal.setPosition.bind(modal, $el), 400));
+        },
+
+        _onPossibleOutsideClick: function($el, ev) {
+            if ($el.has(ev.target))
+                modal.destroy($el);
+        },
+
+        _onKeyUp: function($el, ev) {
+            if (ev.which===27)
+                modal.destroy($el);
         },
 
         setPosition: function($el, cfg) {
@@ -122,9 +135,7 @@ define([
             }
         },
 
-        destroy: function($el, ev) {
-            if (ev && ev.type === "keyup" && ev.which !== 27)
-                return;
+        destroy: function($el) {
             $(document).off(".pat-modal");
             $el.remove();
         }
