@@ -7,4 +7,10 @@ Making a release
     ```make check```
 
 * create a new bundle and commit that
+
+    ```make bundle```
+
 * tag the release
+
+    ```git tag 2.0.0```
+    ```git push --tags```
