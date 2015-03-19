@@ -7,49 +7,79 @@ define([
     "jquery",
     "pat-registry",
     "pat-utils",
+    "pat-base",
+    "underscore",
     "parsley",
     "parsley.extend"
-], function($, patterns, utils) {
-    var validate = {
+], function($, patterns, utils, Base, _) {
+
+    return Base.extend({
         name: "validate",
         trigger: "form.pat-validate",
 
         init: function($el) {
-            return $el.each(function() {
-                this.noValidate=true;
-                var parsley_form, field, i;
+            var parsley_form, field, i;
+            $el.noValidate=true;
 
-                parsley_form=$(this).parsley({
-                    trigger: "change keyup",
-                    successClass: "valid",
-                    errorClass: "warning",
-                    errors: {
-                        classHandler: validate._classHandler,
-                        container: validate._container
-                    },
-                    messages: {
-                        beforedate:     "This date should be before another date.",
-                        onorbeforedate: "This date should be on or before another date.",
-                        afterdate:      "This date should be after another date.",
-                        onorafterdate:  "This date should be on or after another date."
-                    }
-                });
-                for (i=0; i<parsley_form.items.length; i++) {
-                    field = parsley_form.items[i];
-                    if (typeof field.UI !== "undefined") {
-                        // Parsley 1.2.x
-                        field.UI.addError = validate._addFieldError;
-                        field.UI.removeError = validate._removeFieldError;
-                        validate.parsley12 = true;
-                    } else {
-                        // Parsley 1.1.x
-                        field.addError = validate._addFieldError;
-                        field.removeError = validate._removeFieldError;
-                    }
+            /*
+            this.superValidate = ParsleyForm.prototype.validate;
+            ParsleyForm.prototype.validate = this._validate;
+            */
+
+            this.parsley_form = $el.parsley({
+                trigger: "change keyup",
+                successClass: "valid",
+                errorClass: "warning",
+                errors: {
+                    classHandler: this._classHandler,
+                    container: this._container
+                },
+                messages: {
+                    beforedate:     "This date should be before another date.",
+                    onorbeforedate: "This date should be on or before another date.",
+                    afterdate:      "This date should be after another date.",
+                    onorafterdate:  "This date should be on or after another date."
                 }
-                $(this).on("pat-ajax-before.pat-validate",
-                           validate.onPreSubmit);
             });
+
+            /*
+            var that = this;
+            this.parsley_form.addListener({
+                onFormSubmit: function (valid, event, field) {
+                    this.onFormSubmit.call(this, valid, event, field, that);
+                }
+            });
+            */
+
+            _.each(this.parsley_form.items, function (field) {
+                var that = this;
+                if (typeof field.UI !== "undefined") {
+                    // Parsley 1.2.x
+                    field.UI.addError = function (error) {
+                        that._addFieldError.call(this, error, that);
+                    };
+                    field.UI.removeError = function (error) {
+                        that._removeFieldError.call(this, error, that);
+                    };
+                    this.parsley12 = true;
+                } else {
+                    // Parsley 1.1.x
+                    field.addError = function (error) {
+                        that._addFieldError.call(this, error, that);
+                    };
+                    field.removeError = function (error) {
+                        that._removeFieldError.call(this, error, that);
+                    };
+                }
+            }.bind(this));
+            $el.on("pat-ajax-before.pat-validate", this.onPreSubmit);
+        },
+
+        _validate: function (event) {
+            if (true) {
+                return this.superValidate.call(this.parsley_form, event);
+            }
+            return true;
         },
 
         // Parsley error class handler, used to determine which element will
@@ -80,9 +110,9 @@ define([
         },
 
         // Parsley method to add an error to a field
-        _addFieldError: function(error) {
+        _addFieldError: function(error, that) {
             var $el;
-            if (validate.parsley12) {
+            if (this.parsley12) {
                 $el = this.ParsleyInstance.element;
             } else {
                 $el = this.element;
@@ -99,7 +129,7 @@ define([
             }
 
             for (var constraintName in error) {
-                if (validate._findErrorMessages($el, constraintName).length)
+                if (that._findErrorMessages($el, constraintName).length)
                     return;
                 var $message = $("<em/>", {"class": "validation warning message"});
                 $message.attr("data-validate-constraint", constraintName);
@@ -117,14 +147,14 @@ define([
         },
 
         // Parsley method to remove all error messages for a field
-        _removeFieldError: function(constraintName) {
+        _removeFieldError: function(constraintName, that) {
             var $el;
-            if (validate.parsley12) {
+            if (this.parsley12) {
                 $el = this.ParsleyInstance.element;
             } else {
                 $el = this.element;
             }
-            var $messages = validate._findErrorMessages($el, constraintName);
+            var $messages = that._findErrorMessages($el, constraintName);
             $messages.parent().trigger("pat-update", {pattern: "validate"});
             $messages.remove();
         },
@@ -133,9 +163,5 @@ define([
             veto.veto |= !$(event.target).parsley("isValid");
             $(event.target).parsley("validate");
         }
-    };
-
-
-    patterns.register(validate);
-    return validate;
+    });
 });
