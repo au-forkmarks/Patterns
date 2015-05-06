@@ -11,6 +11,11 @@ define([
 ], function($, logger, registry, utils, Base, inject, Showdown) {
     var log = logger.getLogger("pat.markdown");
     var is_markdown_resource = /\.md$/;
+    var is_header_tags = new RegExp(
+        ["^<\\/?(a|abbr|acronym|b|bdo|big|button|cite|code|del|dfn|em|i|img|",
+         "input|ins|kbd|label|map|mark|meter|progress|q|ruby|rp|rt|s|samp|",
+         "select|small|span|strike|strong|sub|sup|time|tt|u|var|wbr)[^>]*>$"
+        ].join(""), "i");
 
     var Markdown = Base.extend({
         name: "markdown",
@@ -29,7 +34,7 @@ define([
 
         render: function(text) {
             var $rendering = $("<div/>"),
-                converter = new Showdown.converter({extensions: ['table', 'prettify', 'github']});
+                converter = new Showdown.converter({extensions: ['table', 'highlight', 'github', 'html5headers']});
             $rendering.html(converter.makeHtml(text));
             return $rendering;
         },
@@ -80,8 +85,67 @@ define([
         }
     });
 
+    // Output modifier extension that changes the headings to make them as HTML5 recommends
+    // See: https://github.com/Patternslib/Patterns/issues/216
+    Showdown.extensions.html5headers = function(converter) {
+        return [{ type: 'output', filter: function(source){
+
+
+            _renderHtml5Headers: function(text, cache) {
+                var span_converter = Markdown.getSanitizingConverter();
+
+                text = text.replace(/^(.+)?\s*\n=+\s*\n+((?:.|\n)*?(?=^.*?\n=+\s*$)|(?:.|\n)*)/gm,
+                    function (wholeMatch, m1, m2) {
+                        return "<section>\n" +
+                            "  <h1>" + _._renderHeader(span_converter, m1) + "</h1>\n" +
+                            runBlockGamut(m2) + "\n" +
+                            "</section>";
+                    }
+                );
+
+                text = text.replace(/^(.+)?\s*\n-+\s*\n+((?:.|\n)*?(?=^.*?\n-+\s*$)|(?:.|\n)*)/gm,
+                    function (wholeMatch, m1, m2) {
+                        return "<section>\n" +
+                            "  <h1>" + _._renderHeader(span_converter, m1) + "</h1>\n" +
+                            runBlockGamut(m2) + "\n" +
+                            "</section>";
+                    }
+                );
+
+                text = _._rewrapSection(text, cache);
+
+                var pattern = "^#{@LEVEL@}\\s*([^#].+?)\\s*$\\n+((?:.|\\n)*?(?=^#{1,@LEVEL@}\\s)|.*(?:.|\\n)*)",
+                    replacer = (function(wholeMatch, m1, m2) {
+                        return "<section>\n" +
+                            "  <h1>" + _._renderHeader(span_converter, m1) + "</h1>\n" +
+                            runBlockGamut(m2) + "\n" +
+                            "</section>";
+                    }
+                );
+                for (var level=6; level>0; level--) {
+                    var matcher = new RegExp(pattern.replace(/@LEVEL@/g, level), "gm");
+                    text = text.replace(matcher, replacer);
+                    text = _._rewrapSection(text, cache);
+                }
+
+                return text;
+            },
+
+
+
+
+
+
+            return source.replace(/<[^>]*>?/gi, function(tag) {
+                debugger;
+                return tag.match(is_header_tags) ? tag : "";
+            });
+            return source;
+        }}];
+    };
+
     // Add support for syntax highlighting via pat-syntax-highlight
-    Showdown.extensions.prettify = function(converter) {
+    Showdown.extensions.highlight = function(converter) {
         return [{ type: 'output', filter: function(source){
             return source.replace(/(<pre>)?<code>/gi, function(match, pre) {
                 if (pre) {
