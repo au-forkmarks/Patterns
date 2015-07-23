@@ -1,7 +1,7 @@
 BOWER 		?= node_modules/.bin/bower
 JSHINT 		?= node_modules/.bin/jshint
 PEGJS		?= node_modules/.bin/pegjs
-PHANTOMJS	?= node_modules/.bin/phantomjs
+PHANTOMJS	?= phantomjs
 HTTPSERVE   ?= node_modules/.bin/http-server
 SASS        ?= sass 
 
