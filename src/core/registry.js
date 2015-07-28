@@ -106,9 +106,22 @@ define([
             }
         },
 
+        orderPatterns: function (patterns) {
+            // XXX: Bit of a hack. We need the validate pattern to be
+            // parsed and initiated before the inject pattern. So we make
+            // sure here, that it appears first. Not sure what would be
+            // the best solution. Perhaps some kind of way to register
+            // patterns "before" or "after" other patterns.
+            if (_.contains(patterns, "validate") && _.contains(patterns, "inject")) {
+                patterns.splice(patterns.indexOf("validate"), 1);
+                patterns.unshift("validate");
+            }
+            return patterns;
+        },
+
         scan: function registryScan(content, patterns, trigger) {
             var selectors = [], $match, plog;
-            patterns = patterns || Object.keys(registry.patterns);
+            patterns = this.orderPatterns(patterns || Object.keys(registry.patterns));
             patterns.forEach(_.partial(this.transformPattern, _, content));
             patterns = _.each(patterns, function (name) {
                 var pattern = registry.patterns[name];
