@@ -20,6 +20,8 @@ define([
     parser.addArgument("message-email", "This value must be a valid email address");
     parser.addArgument("message-number", "This value must be a number");
     parser.addArgument("message-required", "This field is required");
+    parser.addArgument("not-after");
+    parser.addArgument("not-before");
 
     return Base.extend({
         name: "validate",
@@ -34,19 +36,52 @@ define([
             this.$el.on('pat-update.pat-validate', this.onPatternUpdate.bind(this));
         },
 
+        setLocalConstraints: function (input, constraints) {
+            /* Some form fields might have their own data-pat-validate
+             * attribute, used to set field-specific constraints.
+             *
+             * We parse them and add them to the passed in constraints obj.
+             */
+            var name = input.getAttribute('name').replace(/\./g, '\\.'),
+                type = input.getAttribute('type'),
+                isDate = validate.moment.isDate,
+                opts;
+            if (input.dataset.patValidate) {
+                if (_.contains(['datetime', 'date'], type)) {
+                    opts = parser.parse($(input));
+                    if (typeof opts.not !== "undefined") {
+                        c = constraints[name][type];
+                        try {
+                            if (typeof opts.not.before !== "undefined") {
+                                c.earliest = isDate(opts.not.before) ? opts.not.before : $(opts.not.before).val();
+                                c.message = '^'+opts.message[type];
+                            }
+                            if (typeof opts.not.after !== "undefined") {
+                                c.latest = isDate(opts.not.after) ? opts.not.after : $(opts.not.after).val();
+                                c.message = '^'+opts.message[type];
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        }
+                    }
+                }
+            }
+            return constraints;
+        },
+
         getConstraints: function (input) {
             // Get validation constraints by parsing the input element for hints
-            var name = input.getAttribute('name'),
+            var name = input.getAttribute('name').replace(/\./g, '\\.'),
+                type = input.getAttribute('type'),
                 constraints = {};
-            if (!name) { return; }
-            constraints[name.replace(/\./g, '\\.')] = {
+            constraints[name] = {
                 'presence': input.getAttribute('required') ? { 'message': '^'+this.options.message.required } : false,
-                'email': input.getAttribute('type') == 'email' ? { 'message': '^'+this.options.message.email } : false,
-                'numericality': input.getAttribute('type') == 'number' ? { 'message': '^'+this.options.message.number } : false,
-                'datetime': input.getAttribute('type') == 'datetime' ? { 'message': '^'+this.options.message.datetime } : false,
-                'date': input.getAttribute('type') == 'date' ? { 'message': '^'+this.options.message.date } : false
+                'email': type == 'email' ? { 'message': '^'+this.options.message.email } : false,
+                'numericality': type == 'number' ? { 'message': '^'+this.options.message.number } : false,
+                'datetime': type == 'datetime' ? { 'message': '^'+this.options.message.datetime } : false,
+                'date': type == 'date' ? { 'message': '^'+this.options.message.date } : false
             };
-            return constraints;
+            return this.setLocalConstraints(input, constraints);
         },
 
         getValueDict: function (input) {
